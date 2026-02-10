@@ -1,65 +1,54 @@
 import pandas as pd
+import numpy as np
+import joblib
+from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder
+from survival_format import create_survival_dataset
+
 
 def encode_survival_features():
-    # Load survival dataset
-    df = pd.read_excel("data/dataset_2_cleaning_work.xlsx")
+    df = create_survival_dataset()
 
-    # Convert delay to numeric
-    df["settlement_delay_minutes"] = pd.to_numeric(
-        df["settlement_delay_minutes"], errors="coerce"
+    # Survival target
+    y = np.array(
+        list(zip(df["event"].astype(bool), df["settlement_delay_minutes"])),
+        dtype=[("event", bool), ("time", float)]
     )
-    df = df.dropna(subset=["settlement_delay_minutes"])
-    df = df[df["settlement_delay_minutes"] > 0]
 
-    # Create event column
-    df["event"] = 1
+    corridor = df["corridor"].reset_index(drop=True)
 
-    # Separate survival variables
-    y_time = df["settlement_delay_minutes"]
-    y_event = df["event"]
+    X = df.drop(
+        columns=["settlement_delay_minutes", "event", "corridor"]
+    )
 
-    # Categorical and numeric features
-    categorical_cols = [
-        "corridor",
-        "firm",
-        "firm_type",
-        "payment instrument",
-        "access point",
-        "receiving network coverage",
-        "pickup method",
-        "transparent"
-    ]
+    cat_cols = X.select_dtypes(include="object").columns
+    num_cols = X.select_dtypes(exclude="object").columns
 
-    numeric_cols = [
-        "cc1 fx margin",
-        "cc1 lcu fee",
-        "cc1 total cost %"
-    ]
-
-    X_cat = df[categorical_cols]
-    X_num = df[numeric_cols]
-
-    # One-Hot Encoding
     encoder = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
+    X_cat = encoder.fit_transform(X[cat_cols])
+    X_num = X[num_cols].values
 
-    X_cat_encoded = encoder.fit_transform(X_cat)
-
-    # Combine encoded categorical + numeric
-    X = pd.concat(
-        [
-            pd.DataFrame(X_cat_encoded),
-            X_num.reset_index(drop=True)
-        ],
-        axis=1
+    feature_names = (
+        list(num_cols) +
+        list(encoder.get_feature_names_out(cat_cols))
     )
 
-    print("Feature encoding completed")
-    print("----------------------------------------")
-    print("Feature matrix shape:", X.shape)
-    print("Number of encoded features:", X_cat_encoded.shape[1])
+    X_final = pd.DataFrame(
+        np.hstack([X_num, X_cat]),
+        columns=feature_names
+    )
 
-    return X, y_time, y_event, encoder
+    # SAVE encoder for future Digital Twin use
+    joblib.dump(encoder, "models/phase1_encoder.pkl")
+
+    X_train, X_test, y_train, y_test, corridor_train, corridor_test = train_test_split(
+        X_final, y, corridor, test_size=0.2, random_state=42
+    )
+
+    print("Phase-1 feature encoding complete")
+    print("Shape:", X_final.shape)
+
+    return X_train, X_test, y_train, y_test, corridor_train, corridor_test
 
 
 if __name__ == "__main__":

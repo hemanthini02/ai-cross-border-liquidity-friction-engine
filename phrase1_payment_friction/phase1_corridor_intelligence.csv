@@ -1,0 +1,5 @@
+corridor,p50_delay_min,p75_delay_min,p90_delay_min,avg_p_delay_gt_1day,avg_p_delay_gt_2day,p50_delay_hrs,p75_delay_hrs,p90_delay_hrs,congestion_regime,settlement_risk_score
+AREIND,60,2880,2880,0.395717833,0.095106486,1,48,48,MEDIUM,25
+DEUIND,720,1440,2880,0.331720585,0.150304185,12,24,48,MEDIUM,24
+GBRIND,720,1440,2880,0.238318192,0.103145033,12,24,48,MEDIUM,17
+USAIND,720,1440,2880,0.242543547,0.139953052,12,24,48,MEDIUM,19
